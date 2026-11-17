@@ -1,0 +1,10 @@
+.git/
+.gitignore
+.aws-sam/
+.pytest_cache/
+tests/
+venv/
+.venv/
+__pycache__/
+*.pyc
+README.md

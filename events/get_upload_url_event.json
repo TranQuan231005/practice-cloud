@@ -1,0 +1,13 @@
+{
+  "resource": "/documents/{id}/upload-url",
+  "path": "/documents/test-doc-123/upload-url",
+  "httpMethod": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "queryStringParameters": null,
+  "pathParameters": {
+    "id": "test-doc-123"
+  },
+  "body": "{\"file_name\": \"lab-report.pdf\", \"content_type\": \"application/pdf\"}"
+}

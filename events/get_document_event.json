@@ -1,0 +1,11 @@
+{
+  "resource": "/documents/{id}",
+  "path": "/documents/test-doc-123",
+  "httpMethod": "GET",
+  "headers": {},
+  "queryStringParameters": null,
+  "pathParameters": {
+    "id": "test-doc-123"
+  },
+  "body": null
+}

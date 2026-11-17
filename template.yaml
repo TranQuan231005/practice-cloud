@@ -1,0 +1,164 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Serverless Document Vault
+  Hands-on practice lab for AWS SAM & SAM Policy Templates (DynamoDBCrudPolicy, DynamoDBReadPolicy, S3WritePolicy).
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 256
+    Runtime: python3.12
+    Tracing: Active
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref DocumentsTable
+        BUCKET_NAME: !Ref DocumentsBucket
+        LOG_LEVEL: INFO
+
+Resources:
+  # ------------------------------------------------------------
+  # API Gateway
+  # ------------------------------------------------------------
+  DocumentsApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,PATCH,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+
+  # ------------------------------------------------------------
+  # DynamoDB Table: Stores document metadata and status history
+  # ------------------------------------------------------------
+  DocumentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-DocumentsTable"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: document_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: document_id
+          KeyType: HASH
+
+  # ------------------------------------------------------------
+  # S3 Bucket: Stores uploaded document files
+  # ------------------------------------------------------------
+  DocumentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-documents-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  # ------------------------------------------------------------
+  # Lambda 1: Create Document
+  # SAM Policy Template: DynamoDBCrudPolicy
+  # ------------------------------------------------------------
+  CreateDocumentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src.handlers.create_document.handler
+      Description: Validates and persists initial document metadata
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DocumentsTable
+      Events:
+        CreateDoc:
+          Type: Api
+          Properties:
+            Path: /documents
+            Method: post
+            RestApiId: !Ref DocumentsApi
+
+  # ------------------------------------------------------------
+  # Lambda 2: Get Document
+  # SAM Policy Template: DynamoDBReadPolicy (Least Privilege: Read Only)
+  # ------------------------------------------------------------
+  GetDocumentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src.handlers.get_document.handler
+      Description: Retrieves single or listed document metadata (Read-only)
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DocumentsTable
+      Events:
+        GetDoc:
+          Type: Api
+          Properties:
+            Path: /documents/{id}
+            Method: get
+            RestApiId: !Ref DocumentsApi
+        ListDocs:
+          Type: Api
+          Properties:
+            Path: /documents
+            Method: get
+            RestApiId: !Ref DocumentsApi
+
+  # ------------------------------------------------------------
+  # Lambda 3: Get Upload URL
+  # SAM Policy Template: S3WritePolicy (Least Privilege: PutObject Only)
+  # ------------------------------------------------------------
+  GetUploadUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src.handlers.get_upload_url.handler
+      Description: Generates S3 Presigned URL for client file uploads
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref DocumentsBucket
+      Events:
+        GetUploadUrl:
+          Type: Api
+          Properties:
+            Path: /documents/{id}/upload-url
+            Method: post
+            RestApiId: !Ref DocumentsApi
+
+  # ------------------------------------------------------------
+  # Lambda 4: Update Document Status
+  # SAM Policy Template: DynamoDBCrudPolicy
+  # Purpose: Observability and state machine transitions
+  # ------------------------------------------------------------
+  UpdateDocumentStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src.handlers.update_status.handler
+      Description: Updates and records document lifecycle status transitions
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DocumentsTable
+      Events:
+        UpdateStatus:
+          Type: Api
+          Properties:
+            Path: /documents/{id}/status
+            Method: patch
+            RestApiId: !Ref DocumentsApi
+
+Outputs:
+  DocumentsApiUrl:
+    Description: Base URL for API Gateway prod stage
+    Value: !Sub "https://${DocumentsApi}.execute-api.${AWS::Region}.amazonaws.com/prod/"
+  DocumentsTableName:
+    Description: DynamoDB Table Name
+    Value: !Ref DocumentsTable
+  DocumentsBucketName:
+    Description: S3 Bucket Name
+    Value: !Ref DocumentsBucket

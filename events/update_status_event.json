@@ -1,0 +1,13 @@
+{
+  "resource": "/documents/{id}/status",
+  "path": "/documents/test-doc-123/status",
+  "httpMethod": "PATCH",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "queryStringParameters": null,
+  "pathParameters": {
+    "id": "test-doc-123"
+  },
+  "body": "{\"status\": \"PROCESSING\", \"reason\": \"Observing pipeline: worker started extracting metadata.\"}"
+}

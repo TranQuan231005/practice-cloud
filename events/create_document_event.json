@@ -1,0 +1,11 @@
+{
+  "resource": "/documents",
+  "path": "/documents",
+  "httpMethod": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "queryStringParameters": null,
+  "pathParameters": null,
+  "body": "{\"title\": \"AWS SAM & IAM Lab Notes\", \"owner\": \"tranquan@example.com\", \"description\": \"Hands-on practice with SAM Policy Templates and state transitions.\"}"
+}
